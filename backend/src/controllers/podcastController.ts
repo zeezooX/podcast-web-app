@@ -3,6 +3,7 @@ import Podcast from '../models/Podcast';
 import { AuthRequest } from '../middleware/auth';
 import { getGridFSBucket } from '../config/database';
 import { Readable } from 'stream';
+import * as mm from 'music-metadata';
 
 /**
  * @route   GET /api/podcasts
@@ -110,6 +111,16 @@ export const createPodcast = async (req: AuthRequest, res: Response): Promise<vo
     const audioFile = files.audio[0];
     const imageFile = files.image ? files.image[0] : null;
 
+    // Extract audio metadata (duration)
+    let duration: number | undefined;
+    try {
+      const metadata = await mm.parseBuffer(audioFile.buffer, audioFile.mimetype);
+      duration = metadata.format.duration ? Math.floor(metadata.format.duration) : undefined;
+    } catch (metadataError) {
+      console.warn('Failed to extract audio duration:', metadataError);
+      // Continue without duration - it's not critical
+    }
+
     // Get GridFS bucket
     const bucket = getGridFSBucket();
 
@@ -164,6 +175,7 @@ export const createPodcast = async (req: AuthRequest, res: Response): Promise<vo
       category: category || 'General',
       audioFileId,
       imageFileId,
+      duration,
       fileSize: audioFile.size,
       uploadedBy: req.user?.id,
     });
