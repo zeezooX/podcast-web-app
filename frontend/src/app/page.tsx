@@ -26,6 +26,8 @@ export default function Home() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isRepeatMode, setIsRepeatMode] = useState(false);
+  const [isShuffleMode, setIsShuffleMode] = useState(false);
 
   useEffect(() => {
     loadPodcasts();
@@ -160,15 +162,37 @@ export default function Home() {
     : -1;
 
   const handleNext = () => {
-    if (currentIndex >= 0 && currentIndex < allEpisodes.length - 1) {
+    if (isShuffleMode) {
+      // Shuffle: pick a random episode that's not the current one
+      const availableEpisodes = allEpisodes.filter(ep => ep.id !== currentEpisode?.id);
+      if (availableEpisodes.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableEpisodes.length);
+        handlePlayEpisode(availableEpisodes[randomIndex]);
+      }
+    } else if (currentIndex >= 0 && currentIndex < allEpisodes.length - 1) {
       handlePlayEpisode(allEpisodes[currentIndex + 1]);
     }
   };
 
   const handlePrevious = () => {
-    if (currentIndex > 0) {
+    if (isShuffleMode) {
+      // Shuffle: pick a random episode that's not the current one
+      const availableEpisodes = allEpisodes.filter(ep => ep.id !== currentEpisode?.id);
+      if (availableEpisodes.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableEpisodes.length);
+        handlePlayEpisode(availableEpisodes[randomIndex]);
+      }
+    } else if (currentIndex > 0) {
       handlePlayEpisode(allEpisodes[currentIndex - 1]);
     }
+  };
+
+  const toggleRepeatMode = () => {
+    setIsRepeatMode(!isRepeatMode);
+  };
+
+  const toggleShuffleMode = () => {
+    setIsShuffleMode(!isShuffleMode);
   };
 
   return (
@@ -290,8 +314,12 @@ export default function Home() {
         episode={currentEpisode}
         isPlaying={isPlaying}
         onPlayPause={handlePlayPause}
-        onNext={currentIndex < allEpisodes.length - 1 ? handleNext : undefined}
-        onPrevious={currentIndex > 0 ? handlePrevious : undefined}
+        onNext={currentIndex < allEpisodes.length - 1 || isShuffleMode ? handleNext : undefined}
+        onPrevious={currentIndex > 0 || isShuffleMode ? handlePrevious : undefined}
+        isRepeatMode={isRepeatMode}
+        isShuffleMode={isShuffleMode}
+        onToggleRepeat={toggleRepeatMode}
+        onToggleShuffle={toggleShuffleMode}
       />
 
       {/* Upload Podcast Dialog */}

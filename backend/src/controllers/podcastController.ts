@@ -12,18 +12,18 @@ import * as mm from 'music-metadata';
  */
 export const getAllPodcasts = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Get only basic metadata, exclude audioFileId
+    // Get all podcasts with metadata
     const podcasts = await Podcast.find()
-      .select('-audioFileId')
       .populate('uploadedBy', 'name email')
       .sort({ createdAt: -1 });
 
-    // Add imageUrl to each podcast
+    // Add imageUrl and audioUrl to each podcast
     const podcastsWithUrls = podcasts.map((podcast) => {
       const podcastObj = podcast.toObject();
       return {
         ...podcastObj,
         imageUrl: podcastObj.imageFileId ? `/api/files/image/${podcastObj.imageFileId}` : null,
+        audioUrl: `/api/files/audio/${podcastObj.audioFileId}`,
       };
     });
 

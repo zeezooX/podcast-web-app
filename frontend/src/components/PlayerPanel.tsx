@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Loader2 } from "lucide-react";
 import { Episode } from "@/types/episode";
 
 interface PlayerPanelProps {
@@ -11,19 +11,47 @@ interface PlayerPanelProps {
   readonly onPlayPause: () => void;
   readonly onNext?: () => void;
   readonly onPrevious?: () => void;
+  readonly isRepeatMode?: boolean;
+  readonly isShuffleMode?: boolean;
+  readonly onToggleRepeat?: () => void;
+  readonly onToggleShuffle?: () => void;
 }
 
-export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, onPrevious }: PlayerPanelProps) {
+export default function PlayerPanel({ 
+  episode, 
+  isPlaying, 
+  onPlayPause, 
+  onNext, 
+  onPrevious,
+  isRepeatMode = false,
+  isShuffleMode = false,
+  onToggleRepeat,
+  onToggleShuffle
+}: PlayerPanelProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isAudioReady, setIsAudioReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const prevEpisodeId = useRef<string | null>(null);
 
   // Update audio source when episode changes
   useEffect(() => {
     if (episode && audioRef.current && episode.url) {
+      const isNewEpisode = prevEpisodeId.current !== null && prevEpisodeId.current !== episode.id;
+      
+      setIsAudioReady(false);
       audioRef.current.src = episode.url;
       audioRef.current.load();
       setCurrentTime(0);
+      
+      // Auto-play when episode changes via next/previous
+      if (isNewEpisode) {
+        audioRef.current.play().catch(err => {
+          console.error('Failed to auto-play new episode:', err);
+        });
+      }
+      
+      prevEpisodeId.current = episode.id;
     }
   }, [episode]);
 
@@ -56,11 +84,30 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
 
   // Handle audio ended
   const handleEnded = () => {
-    if (onNext) {
+    if (isRepeatMode) {
+      // Repeat mode: restart current episode
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(err => {
+          console.error('Failed to repeat audio:', err);
+        });
+      }
+    } else if (onNext) {
       onNext();
     } else {
       onPlayPause(); // Stop playing if no next episode
     }
+  };
+
+  // Handle audio ready to play
+  const handleCanPlay = () => {
+    setIsAudioReady(true);
+  };
+
+  // Handle audio error
+  const handleError = () => {
+    setIsAudioReady(false);
+    console.error('Error loading audio');
   };
 
   const formatTime = (seconds: number) => {
@@ -108,6 +155,8 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={handleEnded}
+          onCanPlay={handleCanPlay}
+          onError={handleError}
           preload="metadata"
         />
       )}
@@ -160,11 +209,19 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
         {/* Control buttons */}
         <div className="flex items-center justify-between max-w-md mx-auto lg:max-w-none">
           <button
-            className="text-purple-200 hover:text-white transition-all duration-300 disabled:opacity-50 hover:scale-110 active:scale-95 hidden sm:block"
-            disabled
+            onClick={onToggleShuffle}
+            className={`relative transition-all duration-300 hover:scale-110 active:scale-95 hidden sm:block ${
+              isShuffleMode 
+                ? 'text-white' 
+                : 'text-purple-200 hover:text-white'
+            }`}
+            disabled={!onToggleShuffle}
             aria-label="Shuffle"
           >
             <Shuffle className="w-5 h-5 lg:w-6 lg:h-6 transition-transform duration-200" />
+            {isShuffleMode && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full animate-pulse" />
+            )}
           </button>
           <button
             onClick={onPrevious}
@@ -176,10 +233,13 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
           </button>
           <button
             onClick={onPlayPause}
-            className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl bg-purple-700 hover:bg-purple-600 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 active:scale-95"
-            aria-label={isPlaying ? "Pause" : "Play"}
+            className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl bg-purple-700 hover:bg-purple-600 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            aria-label={!isAudioReady ? "Loading" : isPlaying ? "Pause" : "Play"}
+            disabled={!isAudioReady}
           >
-            {isPlaying ? (
+            {!isAudioReady ? (
+              <Loader2 className="w-6 h-6 lg:w-7 lg:h-7 text-white animate-spin" />
+            ) : isPlaying ? (
               <Pause className="w-6 h-6 lg:w-7 lg:h-7 text-white fill-white transition-all duration-200" />
             ) : (
               <Play className="w-6 h-6 lg:w-7 lg:h-7 text-white fill-white ml-1 transition-all duration-200" />
@@ -194,11 +254,19 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
             <SkipForward className="w-6 h-6 lg:w-7 lg:h-7 transition-transform duration-200" />
           </button>
           <button
-            className="text-purple-200 hover:text-white transition-all duration-300 disabled:opacity-50 hover:scale-110 active:scale-95 hidden sm:block"
-            disabled
+            onClick={onToggleRepeat}
+            className={`relative transition-all duration-300 hover:scale-110 active:scale-95 hidden sm:block ${
+              isRepeatMode 
+                ? 'text-white' 
+                : 'text-purple-200 hover:text-white'
+            }`}
+            disabled={!onToggleRepeat}
             aria-label="Repeat"
           >
             <Repeat className="w-4 h-4 lg:w-5 lg:h-5 transition-transform duration-200" />
+            {isRepeatMode && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full animate-pulse" />
+            )}
           </button>
         </div>
       </div>
