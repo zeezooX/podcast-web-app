@@ -17,6 +17,20 @@
   --purple-800: #6F48C9;
 }
 
+/* Fix for mobile viewport height with address bar */
+html, body {
+  height: 100%;
+  height: 100dvh; /* Dynamic viewport height */
+  overflow: hidden;
+}
+
+body {
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+}
+
 @theme {
   --color-background: var(--background);
   --color-white: var(--white);
@@ -33,6 +47,13 @@
   
   --font-family-inter: var(--font-inter);
   --font-family-lexend: var(--font-lexend);
+}
+
+#__next,
+#root,
+[data-nextjs-scroll-focus-boundary] {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {

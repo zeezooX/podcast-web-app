@@ -59,10 +59,10 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full overflow-hidden">
       {/* Main Content or Episode Detail */}
       {selectedEpisode ? (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <Header onLogoClick={handleBackToHome} />
           <EpisodeDetail
             episode={selectedEpisode}
@@ -71,7 +71,7 @@ export default function Home() {
           />
         </div>
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <Header onLogoClick={handleBackToHome} />
         
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 md:px-12 lg:px-16 pt-6 md:pt-8 lg:pt-10 pb-4 md:pb-6">
