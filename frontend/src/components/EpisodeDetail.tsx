@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, Play, Trash2 } from "lucide-react";
-import { Episode, formatDate } from "@/lib/mockData";
+import { Episode, formatDate } from "@/types/episode";
+import { useAuth } from "@/contexts/AuthContext";
 import Dialog from "./Dialog";
 
 interface EpisodeDetailProps {
@@ -19,15 +20,16 @@ export default function EpisodeDetail({
   onPlay,
   onDelete
 }: Readonly<EpisodeDetailProps>) {
+  const { user } = useAuth();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  const isOwner = user && episode.uploadedBy && user.id === episode.uploadedBy.id;
+
   const handleDeleteConfirm = () => {
-    console.log("Deleting episode:", episode.id);
     if (onDelete) {
       onDelete();
     }
     setIsDeleteOpen(false);
-    onBack();
   };
 
   return (
@@ -73,6 +75,7 @@ export default function EpisodeDetail({
                 <h1 className="font-lexend font-bold text-gray-800 text-[1.5rem] md:text-[2rem] leading-[2rem] md:leading-[2.5rem] transition-colors duration-200 flex-1">
                   {episode.title}
                 </h1>
+                {isOwner && (
                 <button
                   onClick={() => setIsDeleteOpen(true)}
                   className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl bg-red-50 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-all duration-200 hover:scale-110 hover:shadow-lg active:scale-95 group"
@@ -80,6 +83,7 @@ export default function EpisodeDetail({
                 >
                   <Trash2 className="w-5 h-5 md:w-6 md:h-6 transition-colors duration-200" />
                 </button>
+                )}
               </div>
               <p className="font-inter text-gray-500 text-[0.9375rem] md:text-[1rem] mb-2 md:mb-3 transition-colors duration-200 line-clamp-2">
                 {episode.members}

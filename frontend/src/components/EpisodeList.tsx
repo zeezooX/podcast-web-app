@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Play } from "lucide-react";
-import { Episode, formatDate } from "@/lib/mockData";
+import { Episode, formatDate } from "@/types/episode";
 
 interface EpisodeListProps {
   episodes: Episode[];

@@ -8,6 +8,11 @@ export interface Episode {
   duration: number; // in seconds
   durationFormatted: string;
   url: string;
+  uploadedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export const mockEpisodes: Episode[] = [

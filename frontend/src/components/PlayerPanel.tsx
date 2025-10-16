@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle } from "lucide-react";
-import { Episode } from "@/lib/mockData";
+import { Episode } from "@/types/episode";
 
 interface PlayerPanelProps {
   readonly episode: Episode | null;
@@ -15,34 +15,70 @@ interface PlayerPanelProps {
 
 export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, onPrevious }: PlayerPanelProps) {
   const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Update audio source when episode changes
   useEffect(() => {
-    if (isPlaying && episode) {
-      const interval = setInterval(() => {
-        setCurrentTime((prev) => {
-          const newTime = prev + 1;
-          if (newTime >= episode.duration) {
-            return 0;
-          }
-          return newTime;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
+    if (episode && audioRef.current && episode.url) {
+      audioRef.current.src = episode.url;
+      audioRef.current.load();
+      setCurrentTime(0);
     }
-  }, [isPlaying, episode]);
+  }, [episode]);
+
+  // Play/pause when isPlaying changes
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(err => {
+          console.error('Failed to play audio:', err);
+        });
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  // Update current time as audio plays
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  // Update duration when metadata is loaded
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration || episode?.duration || 0);
+    }
+  };
+
+  // Handle audio ended
+  const handleEnded = () => {
+    if (onNext) {
+      onNext();
+    } else {
+      onPlayPause(); // Stop playing if no next episode
+    }
+  };
 
   const formatTime = (seconds: number) => {
+    if (!isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = Number(e.target.value);
     setCurrentTime(newTime);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
   };
 
-  const progressPercentage = episode ? (currentTime / episode.duration) * 100 : 0;
+  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   if (!episode) {
     return (
@@ -65,6 +101,17 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
 
   return (
     <div className="w-full lg:w-[26.5rem] h-auto lg:h-full bg-purple-500 flex flex-col transition-all duration-300">
+      {/* Hidden audio element */}
+      {episode?.url && (
+        <audio
+          ref={audioRef}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={handleEnded}
+          preload="metadata"
+        />
+      )}
+      
       {/* Top section with image and info */}
       <div className="flex-1 flex flex-row lg:flex-col items-center justify-start lg:justify-center px-4 sm:px-8 lg:px-16 pt-4 lg:pt-16 pb-4 lg:pb-8 animate-in fade-in duration-500 gap-4 lg:gap-0">
         <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-[18rem] lg:h-[18rem] rounded-2xl lg:rounded-3xl overflow-hidden lg:mb-8 shadow-2xl transition-all duration-500 hover:shadow-purple-400/50 hover:scale-105 flex-shrink-0">
@@ -94,7 +141,7 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
           <input
             type="range"
             min="0"
-            max={episode.duration}
+            max={duration || episode.duration || 100}
             value={currentTime}
             onChange={handleProgressChange}
             style={{ '--progress': `${progressPercentage}%` } as React.CSSProperties}
@@ -105,7 +152,7 @@ export default function PlayerPanel({ episode, isPlaying, onPlayPause, onNext, o
               {formatTime(currentTime)}
             </span>
             <span className="font-inter text-[0.75rem] lg:text-[0.875rem] text-purple-200 transition-all duration-300">
-              {episode.durationFormatted}
+              {formatTime(duration || episode.duration || 0)}
             </span>
           </div>
         </div>
