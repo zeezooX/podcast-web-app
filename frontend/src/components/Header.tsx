@@ -2,15 +2,20 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { LogOut } from "lucide-react";
 import Dialog from "./Dialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   onLogoClick?: () => void;
 }
 
 export default function Header({ onLogoClick }: HeaderProps = {}) {
+  const { user, login, register, logout } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
@@ -18,18 +23,47 @@ export default function Header({ onLogoClick }: HeaderProps = {}) {
     month: 'short'
   });
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log("Login submitted");
-    setIsLoginOpen(false);
+    setError("");
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      await login({ email, password });
+      setIsLoginOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: Implement register logic
-    console.log("Register submitted");
-    setIsRegisterOpen(false);
+    setError("");
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      await register({ name, email, password });
+      setIsRegisterOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   return (
@@ -60,38 +94,66 @@ export default function Header({ onLogoClick }: HeaderProps = {}) {
             {today}
           </time>
           
-          <button
-            onClick={() => setIsLoginOpen(true)}
-            className="font-inter font-medium text-purple-500 hover:text-purple-600 text-[0.875rem] md:text-[1rem] transition-all duration-200 hover:scale-105"
-          >
-            Login
-          </button>
-          
-          <button
-            onClick={() => setIsRegisterOpen(true)}
-            className="font-inter font-semibold bg-purple-500 hover:bg-purple-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[0.875rem] md:text-[1rem] transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
-          >
-            Register
-          </button>
+          {user ? (
+            <>
+              <span className="font-inter font-medium text-gray-800 text-[0.875rem] md:text-[1rem] hidden sm:inline">
+                {user.name}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 font-inter font-semibold bg-red-500 hover:bg-red-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[0.875rem] md:text-[1rem] transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setIsLoginOpen(true)}
+                className="font-inter font-medium text-purple-500 hover:text-purple-600 text-[0.875rem] md:text-[1rem] transition-all duration-200 hover:scale-105"
+              >
+                Login
+              </button>
+              
+              <button
+                onClick={() => setIsRegisterOpen(true)}
+                className="font-inter font-semibold bg-purple-500 hover:bg-purple-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[0.875rem] md:text-[1rem] transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
+              >
+                Register
+              </button>
+            </>
+          )}
         </div>
       </header>
 
       {/* Login Dialog */}
       <Dialog 
         isOpen={isLoginOpen} 
-        onClose={() => setIsLoginOpen(false)}
+        onClose={() => {
+          setIsLoginOpen(false);
+          setError("");
+        }}
         title="Login to Podcastr"
       >
         <form onSubmit={handleLogin} className="space-y-5">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl font-inter text-[0.875rem]">
+              {error}
+            </div>
+          )}
+          
           <div>
             <label htmlFor="login-email" className="block font-inter font-medium text-gray-700 text-[0.875rem] mb-2">
               Email
             </label>
             <input
               id="login-email"
+              name="email"
               type="email"
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none"
+              disabled={isLoading}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="your@email.com"
             />
           </div>
@@ -102,18 +164,21 @@ export default function Header({ onLogoClick }: HeaderProps = {}) {
             </label>
             <input
               id="login-password"
+              name="password"
               type="password"
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none"
+              disabled={isLoading}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="••••••••"
             />
           </div>
           
           <button
             type="submit"
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-inter font-semibold py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95"
+            disabled={isLoading}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-inter font-semibold py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            Login
+            {isLoading ? "Logging in..." : "Login"}
           </button>
           
           <p className="text-center font-inter text-[0.875rem] text-gray-500">
@@ -135,19 +200,30 @@ export default function Header({ onLogoClick }: HeaderProps = {}) {
       {/* Register Dialog */}
       <Dialog 
         isOpen={isRegisterOpen} 
-        onClose={() => setIsRegisterOpen(false)}
+        onClose={() => {
+          setIsRegisterOpen(false);
+          setError("");
+        }}
         title="Register for Podcastr"
       >
         <form onSubmit={handleRegister} className="space-y-5">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl font-inter text-[0.875rem]">
+              {error}
+            </div>
+          )}
+          
           <div>
             <label htmlFor="register-name" className="block font-inter font-medium text-gray-700 text-[0.875rem] mb-2">
               Full Name
             </label>
             <input
               id="register-name"
+              name="name"
               type="text"
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none"
+              disabled={isLoading}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="John Doe"
             />
           </div>
@@ -158,9 +234,11 @@ export default function Header({ onLogoClick }: HeaderProps = {}) {
             </label>
             <input
               id="register-email"
+              name="email"
               type="email"
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none"
+              disabled={isLoading}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="your@email.com"
             />
           </div>
@@ -171,19 +249,22 @@ export default function Header({ onLogoClick }: HeaderProps = {}) {
             </label>
             <input
               id="register-password"
+              name="password"
               type="password"
               required
-              minLength={8}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none"
+              minLength={6}
+              disabled={isLoading}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 font-inter text-[0.9375rem] outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="••••••••"
             />
           </div>
           
           <button
             type="submit"
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-inter font-semibold py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95"
+            disabled={isLoading}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-inter font-semibold py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            Register
+            {isLoading ? "Registering..." : "Register"}
           </button>
           
           <p className="text-center font-inter text-[0.875rem] text-gray-500">
