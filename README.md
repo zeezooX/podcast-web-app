@@ -155,4 +155,43 @@ Auto-created by MongoDB.
 
 ## Frontend
 
-_TBA_
+The frontend is a React application built with Next.js and TypeScript, providing a user-friendly interface for browsing, playing, and uploading podcasts with Tailwind CSS styling and responsive design optimized for both mobile and desktop devices.
+
+### Quick Start
+
+1. Install dependencies:
+
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+2. Create a `.env` file in the `frontend` directory with the following variable:
+
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:5000/api
+   ```
+
+3. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+   Or build and run for production:
+
+   ```bash
+   npm run build
+   npm start
+   ```
+
+4. Access the application at `http://localhost:3000`
+
+### Features
+
+- User authentication (register/login)
+- Responsive design for mobile and desktop
+- Browse for podcasts
+- Play podcast episodes with a built-in audio player
+- Upload new podcast episodes (requires authentication)
+- Delete uploaded podcasts (requires authentication)
